@@ -1,0 +1,13 @@
+#1 Content Intro - How I coded a Trading Robot in Python that understands Price Action
+
+#2 What is Price Action Trading?
+
+#3 How to translate Price Action into code?
+
+#4 Backtesting a strategy using Price Action
+
+#5 Coding a deploying the Robot on a Trading Platform
+
+#6 Live Results
+
+#7 Summary
