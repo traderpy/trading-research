@@ -6,7 +6,7 @@ from time import sleep
 
 def get_session_high_low():
     start_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    end_dt = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
+    end_dt = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
 
     rates = mt5.copy_rates_range('GBPJPY', mt5.TIMEFRAME_M15, start_dt, end_dt)
     rates_df = pd.DataFrame(rates)
@@ -45,7 +45,7 @@ def close_position(position, deviation=20, magic=15, symbol='GBPJPY', strategy_n
         "magic": magic,  # INTERGER
         "comment": strategy_name,
         "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_FOK,
+        "type_filling": mt5.ORDER_FILLING_IOC,
     }
 
     order_result = mt5.order_send(request)
@@ -104,8 +104,10 @@ def market_order(symbol, volume, order_type, deviation=20, magic=15, stoploss=0.
 
 
 def get_num_closed_trades_today():
-    deals = mt5.history_deals_get(datetime.combine((datetime.now() + timedelta(hours=1)).date(), datetime.min.time()),
-                                  datetime.now() + timedelta(hours=2))
+    start_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    end_dt = datetime.now().replace(hour=23, minute=59, second=59, microsecond=0)
+
+    deals = mt5.history_deals_get(start_dt, end_dt)
 
     if len(deals) == 0:
         return 0
@@ -118,7 +120,7 @@ def get_num_closed_trades_today():
 
 if __name__ == '__main__':
     mt5.initialize(path=r'C:\Program Files\MetaTrader 5 IC Markets (SC)\terminal64.exe')
-    mt5.login(11100246, 'forsight0412', 'ICMarketsSC-MT5-4')
+    mt5.login(11100246, 'ICMarketsSC-MT5-4')
 
     volume = 0.5
 
@@ -137,12 +139,13 @@ if __name__ == '__main__':
         if datetime.now().time() >= time(16, 0, 0):
             close_all_positions('all')
 
+        num_closed_positions = get_num_closed_trades_today()
         # security logic
-        if mt5.positions_total() or get_num_closed_trades_today():
+        if mt5.positions_total() or num_closed_positions:
             sleep(1)
             continue
 
-        if time(9, 0, 0) <= datetime.now().time() < time(12, 0, 0) and mt5.positions_total() == 0:
+        if time(8, 0, 0) <= datetime.now().time() < time(12, 0, 0) and mt5.positions_total() == 0:
             if last_candle_open > session_high:
                 market_order('GBPJPY', volume, 'buy', deviation=20, magic=15, stoploss=stoploss,
                              strategy_name='London Breakout')
