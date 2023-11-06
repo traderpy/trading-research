@@ -2,15 +2,17 @@ import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, timedelta, time
 from time import sleep
+import pytz
 
 
 def get_session_high_low():
-    start_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    end_dt = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+    start_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=pytz.timezone('UTC'))
+    end_dt = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0, tzinfo=pytz.timezone('UTC'))
 
     rates = mt5.copy_rates_range('GBPJPY', mt5.TIMEFRAME_M15, start_dt, end_dt)
     rates_df = pd.DataFrame(rates)
-    rates_df['time'] = pd.to_datetime(rates_df['time'], unit='s') + timedelta(hours=2)
+    rates_df['time'] = pd.to_datetime(rates_df['time'], unit='s')
+    print(rates_df)
 
     session_high = rates_df['high'].max()
     session_low = rates_df['low'].min()
