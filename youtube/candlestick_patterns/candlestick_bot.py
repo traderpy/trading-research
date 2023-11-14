@@ -1,7 +1,6 @@
 import MetaTrader5 as mt5
-from time import sleep
-
 import pandas as pd
+from time import sleep
 
 
 def market_order(symbol, volume, order_type, deviation=20, magic=30, stoploss=0.0, take_profit=0.0,
@@ -39,16 +38,21 @@ def market_order(symbol, volume, order_type, deviation=20, magic=30, stoploss=0.
 def find_engulfing_pattern(candle):
     bull_cond1 = candle['close'] > candle['open']  # bull candle condition
     bull_cond2 = candle['close'] > candle['previous_high']  # engulfment condition
+    bull_cond3 = candle['previous_open'] > candle['previous_close']  # previous candle must be a bear candle
 
     bear_cond1 = candle['close'] < candle['open']  # bear candle condition
     bear_cond2 = candle['close'] < candle['previous_low']  # engulfment condition
+    bear_cond3 = candle['previous_open'] < candle['previous_close']  # previous candle must be a bull candle
 
     # special condition - engulfing candle body is 1.5 times as long as previous candle range
+    if candle['previous_high'] - candle['previous_low'] == 0:
+        return False
+
     special_cond = abs(candle['open'] - candle['close']) / (candle['previous_high'] - candle['previous_low']) >= 1.5
 
-    if bull_cond1 and bull_cond2 and special_cond:
+    if bull_cond1 and bull_cond2 and bull_cond3 and special_cond:
         return 'buy'
-    elif bear_cond1 and bear_cond2 and special_cond:
+    elif bear_cond1 and bear_cond2 and bear_cond3 and special_cond:
         return 'sell'
     else:
         return False
@@ -59,8 +63,10 @@ def get_engulfing_signal(symbol, timeframe):
     ohlc_df = pd.DataFrame(ohlc)[['time', 'open', 'high', 'low', 'close']]
     ohlc_df['time'] = pd.to_datetime(ohlc_df['time'], unit='s')
 
+    ohlc_df['previous_open'] = ohlc_df['open'].shift(1)
     ohlc_df['previous_high'] = ohlc_df['high'].shift(1)
     ohlc_df['previous_low'] = ohlc_df['low'].shift(1)
+    ohlc_df['previous_close'] = ohlc_df['close'].shift(1)
 
     ohlc_df['signal'] = ohlc_df.apply(find_engulfing_pattern, axis=1)
 
@@ -81,7 +87,7 @@ if __name__ == '__main__':
 
     # strategy parameters
     symbol = 'EURUSD'
-    timeframe = mt5.TIMEFRAME_M5
+    timeframe = mt5.TIMEFRAME_M1
     volume = 0.01
 
     trading_allowed = True
@@ -89,14 +95,15 @@ if __name__ == '__main__':
         # Careful! Loop can open infinite positions!
 
         signal = get_engulfing_signal(symbol, timeframe)
-        print(signal)
+        print('signal', signal)
+        print('---\n')
 
-        if signal == 'buy' and mt5.positions_total == 0:
-            market_order(symbol, volume, 'buy')
+        if signal == 'buy' and mt5.positions_total() == 0:
+            res = market_order(symbol, volume, 'buy')
             trading_allowed = False
 
-        elif signal == 'sell' and mt5.positions_total == 0:
-            market_order(symbol, volume, 'sell')
+        elif signal == 'sell' and mt5.positions_total() == 0:
+            res = market_order(symbol, volume, 'sell')
             trading_allowed = False
 
         sleep(1)
